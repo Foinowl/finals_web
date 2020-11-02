@@ -1,21 +1,19 @@
 from datetime import date
 
 from django.shortcuts import render
-
+from django.db import transaction, IntegrityError, DatabaseError
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 
-from main_page.forms import UserForm, StudentProfileForm, CourseRegistrationForm
+from rest_framework.authtoken.models import Token
+
+from main_page.forms import UserForm, StudentProfileForm
 from final.settings import django_logger
 from main_page.models import (
     Course,
     CourseRegistration,
-    StudentProfile,
-    # CourseSchedule,
-    # Lecture,
-    # StudentProfile
 )
 
 
@@ -60,27 +58,33 @@ def user_login(request):
 def user_register(request):
     registered = False
     errors_string = None
+    all_errors = []
 
     if request.method == "POST":
         user_form = UserForm(data=request.POST)
-
         if user_form.is_valid():
-            user = user_form.save()
-            user.set_password(user.password)  # hash password
-            user.save()
+            try:
+                with transaction.atomic():
+                    user = user_form.save()
+                    user.set_password(user.password)  # hash password
+                    user.save()
 
-            profile_form = StudentProfileForm(data={'category': 'student'})
-            profile = profile_form.save(commit=False)
-            profile.user = user  # One to One relation
+                    profile_form = StudentProfileForm(
+                        data={'category': 'student'})
+                    profile = profile_form.save(commit=False)
+                    profile.user = user  # One to One relation
+                    profile.save()
 
-            profile.save()
-            registered = True
-            django_logger.info('successful user registration!')
+                    Token.objects.get_or_create(user=user)
+                    registered = True
+                    django_logger.info('successful user registration!')
+            except (IntegrityError, DatabaseError, Exception) as e:
+                all_errors.append(str(e))
+                registered = False
         else:
-            all_errors = []
             for err_list in user_form.errors.values():
                 all_errors.append(' '.join(err_list))
-            errors_string = ' '.join(all_errors)
+        errors_string = ' '.join(all_errors)
     else:
         registered = True if request.user.username else False
         user_form = UserForm()
@@ -91,15 +95,21 @@ def user_register(request):
         'user_form': user_form,
         'registered': registered
     }
-
-    django_logger.info(f'successful user regisration: "{user_form.username}"')
     return render(request, 'registration.html', context=context)
 
 
 @login_required
 def courses_list(request):
+    user = request.user
+    student = user.student_profile if hasattr(
+        user, 'student_profile') else None
+    courses = list(Course.objects.prefetch_related('registrations').all())
+    student_registrations = {
+        course.id for course in courses if course.student_registered(student.id)}
     context = {
-        'courses': list(Course.objects.all())
+        'courses': courses,
+        'student_id': student.id if student else None,
+        'student_registrations': student_registrations,
     }
     return render(request, 'courses_list.html', context=context)
 
@@ -107,59 +117,69 @@ def courses_list(request):
 @login_required
 def course_detail(request, pk):
     user = request.user
-    student = request.user.studentprofile if hasattr(
-        user, 'studentprofile') else None
+    student = user.student_profile if hasattr(
+        user, 'student_profile') else None
     course = Course.objects \
         .prefetch_related('lectures', 'schedules', 'registrations') \
         .order_by('lectures__number_in_course') \
         .get(pk=pk)
-    lectures = list(course.lectures.all())
-    registrations = list(course.registrations.all())
-    schedules = list(course.schedules.all())
+    lectures = course.lectures.all()
+    registrations = course.registrations.all()
+    schedules = course.schedules.all()
+
+    for schedule in schedules:  # find 1st date in course schedule in future
+        if date.today() <= schedule.start_date:
+            scheduled = schedule.start_date
+            break
+    else:
+        scheduled = None
+
+    student_registered = False  # check if student registered for this course
+    for registration in registrations:
+        if registration.student.pk == student.pk:
+            student_registered = True
+
     context = {
         'student': student,
         'course': course,
         'lectures': lectures,
-        'registrations': len(registrations) if registrations else 111,
-        'scheduled': schedules[0].start_date if schedules else None,
+        'registrations': len(registrations) if registrations else 0,
+        'scheduled': scheduled,
+        'student_registered': student_registered,
     }
     return render(request, 'course_detail.html', context=context)
 
 
+def get_course_registration(course_id=None, student_id=None):
+    course_registration = CourseRegistration.objects.select_related('course', 'student').filter(
+        student_id=student_id,
+        course_id=course_id
+    ).first()
+    return course_registration
+
+
 @login_required
 def course_register(request, course_id, student_id):
-    student_registered = False
-    errors_string = None
+    user = request.user
+    student = user.student_profile if hasattr(
+        user, 'student_profile') else None
+    course_registration = get_course_registration(
+        course_id=course_id, student_id=student_id)
+    course = Course.objects.filter(pk=course_id).first()
+    if student_id == student.id and not course_registration and course:
+        CourseRegistration(student=student, course=course).save()
 
-    if request.method == "POST":
-        course_registration_form = CourseRegistrationForm(data=request.POST)
+    return HttpResponseRedirect(reverse('main_page:course_detail', args={course_id}))
 
-        if course_registration_form.is_valid():
-            course_registration_form.save()
-            student_registered = True
-            django_logger.info('successful course registration!')
-        else:
-            all_errors = []
-            for err_list in course_registration_form.errors.values():
-                all_errors.append(' '.join(err_list))
-            errors_string = ' '.join(all_errors)
-    else:
-        course_registration = CourseRegistration.objects.filter(
-            student_id=student_id, course_id=course_id).first()
-        student_registered = True if course_registration else False
-        course_registration_form = CourseRegistrationForm(
-            initial={
-                'student': StudentProfile.objects.filter(pk=student_id).first(),
-                'course': Course.objects.filter(pk=course_id).first()
-            }
-        )
 
-    context = {
-        'active': 'register',
-        'course': Course.objects.filter(pk=course_id).first(),
-        'student': StudentProfile.objects.filter(pk=student_id).first(),
-        'errors': errors_string,
-        'course_registration_form': course_registration_form,
-        'student_registered': student_registered
-    }
-    return render(request, 'course_registration.html', context=context)
+@login_required
+def cancel_course_registration(request, course_id, student_id):
+    user = request.user
+    student = user.student_profile if hasattr(
+        user, 'student_profile') else None
+    course_registration = get_course_registration(
+        course_id=course_id, student_id=student_id)
+    if student_id == student.id and course_registration:
+        course_registration.delete()
+
+    return HttpResponseRedirect(reverse('main_page:course_detail', args={course_id}))

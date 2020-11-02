@@ -3,21 +3,18 @@ from django.contrib.auth.models import User
 
 from rest_framework.viewsets import ViewSet
 from rest_framework.views import APIView
-
 from rest_framework.authentication import TokenAuthentication  # , SessionAuthentication
-from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser  # AllowAny,
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.authtoken.models import Token
 
-from main_page.forms import UserForm, StudentProfileForm
 from main_page.models import (
     StudentProfile,
     Course,
     CourseRegistration,
-    # Lecture,
-    # CourseRegistration,
-    # CourseSchedule,
 )
+
 from api.serializers import (
     StudentProfileSerializer,
     RegisterUserSerializer,
@@ -28,15 +25,9 @@ from api.serializers import (
 
 from final.settings import django_logger
 
-from rest_framework.authtoken.models import Token
-
-for user in User.objects.all():
-    if user.is_active:
-        Token.objects.get_or_create(user=user)
-
 
 class UserProfileViewSet(ViewSet):
-    # authentication_classes = (TokenAuthentication,)
+    authentication_classes = (TokenAuthentication,)
 
     def get_permissions(self):
         """
@@ -45,10 +36,10 @@ class UserProfileViewSet(ViewSet):
         django_logger.info(f'user profile action request: "{self.action}"')
         if self.action in ('create', 'destroy', 'update'):
             permission_classes = (IsAdminUser,)
-        elif self.action in ('retrieve',):
+        elif self.action in ('retrieve', 'list'):
             permission_classes = (IsAuthenticated,)
         else:
-            permission_classes = (AllowAny,)
+            permission_classes = ()
         return [permission() for permission in permission_classes]
 
     queryset = StudentProfile.objects.prefetch_related('courses_registrations')
@@ -61,15 +52,13 @@ class UserProfileViewSet(ViewSet):
         serializer.is_valid(raise_exception=True)
         try:
             with transaction.atomic():
-                user_form = UserForm(data=serializer.validated_data)
-                profile_form = StudentProfileForm(
-                    data=dict(category='student'))
-                new_user = user_form.save()
+                new_user = User(**serializer.validated_data)
                 new_user.set_password(new_user.password)  # hash password
                 new_user.save()
-                profile = profile_form.save(commit=False)
-                profile.user = new_user  # OneToOne relation
-                profile.save()
+                new_student_profile = StudentProfile(
+                    user=new_user, category='student')
+                new_student_profile.save()
+                Token.objects.get_or_create(user=new_user)
         except (IntegrityError, DatabaseError, Exception) as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
@@ -91,13 +80,12 @@ class UserProfileViewSet(ViewSet):
         student_profile = user_new_data.pop('pk')
         user_ = student_profile.user
         try:
-            with transaction.atomic():
-                for attr, value in user_new_data.items():
-                    if attr != 'password':
-                        setattr(user_, attr, value)
-                    else:
-                        user_.set_password(value)  # hash new password
-                user_.save()
+            for attr, value in user_new_data.items():
+                if attr != 'password':
+                    setattr(user_, attr, value)
+                else:
+                    user_.set_password(value)  # hash new password
+            user_.save()
         except (IntegrityError, DatabaseError, Exception) as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
@@ -113,7 +101,7 @@ class UserProfileViewSet(ViewSet):
 
 
 class CourseViewSet(ViewSet):
-    authentication_classes = (TokenAuthentication,)
+    # authentication_classes = (TokenAuthentication,)
 
     def get_permissions(self):
         """
@@ -122,10 +110,10 @@ class CourseViewSet(ViewSet):
         django_logger.info(f'user profile action request: "{self.action}"')
         if self.action in ('create', 'destroy', 'update'):
             permission_classes = (IsAdminUser,)
-        elif self.action in ('retrieve',):
+        elif self.action in ('retrieve', 'list'):
             permission_classes = (IsAuthenticated,)
         else:
-            permission_classes = (AllowAny,)
+            permission_classes = ()
         return [permission() for permission in permission_classes]
 
     queryset = Course.objects.prefetch_related(
@@ -156,7 +144,9 @@ class StudentCourseRegistrationView(APIView):
 
     def post(self, request, course_id, student_id):
         registration = CourseRegistration.objects.filter(
-            student_id=student_id, course_id=course_id).first()
+            student_id=student_id,
+            course_id=course_id
+        ).first()
         if not registration:
             try:
                 student = StudentProfile.objects.get(pk=student_id)

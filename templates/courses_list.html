@@ -2,19 +2,29 @@
 {% load static %}
 
 {% block body_block %}
-    <h1>AVAILABLE COURSES</h1>
-    <ul class=items>
-        {%  if courses %}
-            {% for course in courses %}
-                <li><h2><a href="/learn/course_detail/{{ course.id }}">Title: <em>{{ course.title }}</em> &nbsp; &nbsp; Price:
-                    <em>{{ course.price }}</em>
-                    USD</a></h2>
-            {% endfor %}
-        {% else %}
-             <li><em>Unbelievable. No entries here so far</em>
-        {% endif %}
-    </ul>
-    <br><br>
-    <a href="/">Return to main page</a>
-    <br><br><br><br><br>
-{% endblock %} 
+
+    <div class="alert alert-dark text-center" role="alert">
+        <h2>Courses List</h2>
+    </div>
+
+    <div class="container col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+        <ul class="list-group">
+            {% if courses %}
+                {% for course in courses %}
+                    <li class="list-group-item list-group-item-action">
+                        <a href="/learn/course_detail/{{ course.id }}">
+                            ID: <em>{{ course.id }}&emsp;</em>
+                            Title: <em>{{ course.title }}&emsp;</em>
+                            Price: <em>{{ course.price }}$&emsp;</em>
+                        </a>
+                        {% if student_id and course.id in student_registrations %}
+                            &emsp;(you are registered)
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li><em>Unbelievable. No entries here so far</em>
+            {% endif %}
+        </ul>
+    </div>
+{% endblock %}

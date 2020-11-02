@@ -15,7 +15,26 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.urls import path, include
+
+from .settings import DEBUG
+
+import main_page.urls
+from main_page.views import index_view
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls, name='admin'),
+    path('', index_view, name='index'),
+    path('index/', index_view, name='index'),
+    path('learn/', include(main_page.urls)),
 ]
+
+
+
+if DEBUG:
+    import debug_toolbar
+    urlpatterns = [
+        path('__debug__/', include(debug_toolbar.urls)),
+    ] + urlpatterns
+
+

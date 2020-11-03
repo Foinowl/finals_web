@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'rest_framework',
     'rest_framework.authtoken',
+    'django-rq',
 
     'main_page.apps.MainPageConfig',
 ]
@@ -200,14 +201,42 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'stream': sys.stdout,
         },
+        "rq_console": {
+            "level": "DEBUG",
+            "class": "rq.utils.ColorizingStreamHandler",
+            # "formatter": "rq_console",
+            "exclude": ["%(asctime)s"],
+        },
     },
     'loggers': {
         'django_logger': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
         },
+        "rq.worker": {
+            "handlers": ["rq_console", ],
+            "level": "DEBUG"
+        },
     },
+
 }
 
 logging.config.dictConfig(LOGGING)
 django_logger = logging.getLogger(name='django_logger')
+
+RQ_QUEUES = {
+    'default': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0,
+    },
+    'low': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0,
+        'DEFAULT_TIMEOUT': 360,
+    }
+}
+RQ_SHOW_ADMIN_LINK = True
+# If you need custom exception handlers, 'path.to.my.handler'
+RQ_EXCEPTION_HANDLERS = []

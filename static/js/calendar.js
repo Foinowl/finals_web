@@ -1,6 +1,3 @@
-// var winHeight = $(window).height()
-// var height = (winHeight * 16.6666) / 100
-// var lineHeight = height + "px"
+var year_month_form = document.getElementById("#calendar_form")
 
-// $("li").css("line-height", lineHeight)
-// $("li").css("height", height)
+console.log(year_month_form)

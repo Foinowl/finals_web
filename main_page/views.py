@@ -1,4 +1,5 @@
 from datetime import date
+from calendar import monthrange
 
 from django.shortcuts import render
 from django.db import transaction, IntegrityError, DatabaseError
@@ -101,8 +102,11 @@ def courses_list(request):
     student = user.student_profile if hasattr(
         user, 'student_profile') else None
     courses = list(Course.objects.prefetch_related('registrations').all())
-    student_registrations = {
-        course.id for course in courses if course.student_registered(student.id)}
+    if student:
+        student_registrations = {
+            course.id for course in courses if course.student_registered(student.id)}
+    else:
+        student_registrations = []
     context = {
         'courses': courses,
         'student_id': student.id if student else None,
@@ -146,6 +150,7 @@ def course_detail(request, pk):
     }
     return render(request, 'course_detail.html', context=context)
 
+
 def get_course_registration(course_id=None, student_id=None):
     course_registration = CourseRegistration.objects.select_related('course', 'student').filter(
         student_id=student_id,
@@ -187,7 +192,8 @@ def courses_calendar(request):
     student = user.student_profile if hasattr(
         user, 'student_profile') else None
     today = date.today()
-    year = today.year
+    this_year = today.year
+    year = this_year
     month = today.month
 
     all_errors = []
@@ -203,8 +209,9 @@ def courses_calendar(request):
 
     errors_string = ' '.join(all_errors)
     schedules = CourseSchedule.objects.select_related('course').filter(
-        start_date__gt=date(year=year, month=month, day=1),
-        start_date__lt=date(year=year+2, month=12, day=31),
+        start_date__gte=date(year=year, month=month, day=1),
+        start_date__lt=date(year=year, month=month,
+                            day=monthrange(year, month)[1]),
     )
     scheduled_courses = []
     for sch in schedules:
@@ -212,14 +219,15 @@ def courses_calendar(request):
             'start_date': sch.start_date,
             'id': sch.course.id,
             'title': sch.course.title,
-            'student_registered': 'you are registered' if sch.course.student_registered(student.id) else ''
+            'student_registered': 'you are registered' if student and sch.course.student_registered(
+                student.id) else ''
         }
         scheduled_courses.append(course_data)
     context = {
         'month': month,
         'year': year,
         'all_months': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-        'all_years': [year, year+1, year+2],
+        'all_years': [this_year, this_year + 1, this_year + 2],
         'courses': scheduled_courses,
         "errors": errors_string,
     }

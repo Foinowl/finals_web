@@ -249,4 +249,6 @@ EMAIL_HOST = getattr(secret, 'EMAIL_HOST')
 EMAIL_PORT = getattr(secret, 'EMAIL_PORT')
 EMAIL_HOST_USER = getattr(secret, 'EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = getattr(secret, 'EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = 'Learn to fly'
+
+DEFAULT_FROM_EMAIL = getattr(secret, 'DEFAULT_FROM_EMAIL')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

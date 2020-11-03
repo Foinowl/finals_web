@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from calendar import monthrange
 
 from django.shortcuts import render
@@ -14,9 +14,13 @@ from rest_framework.authtoken.models import Token
 from main_page.forms import UserForm, StudentProfileForm, MonthYearForm
 from final.settings import django_logger
 from main_page.models import Course, CourseRegistration, CourseSchedule
-from main_page.tasks import send_confirmation_mail
+from main_page.tasks import send_confirmation_mail, send_course_begin_mails
 
 from final.settings import django_logger
+
+IN_24_HOURS = 5  # 24 * 60 * 60
+FOREVER = 1  # None
+email_scheduler_status = 'Stopped'
 
 def index_view(request):
     context = {'active': "home"}
@@ -41,7 +45,8 @@ def user_login(request):
         if user:
             if user.is_active:
                 login(request, user)
-                django_rq.enqueue(send_confirmation_mail, user.email)
+                django_rq.enqueue(send_confirmation_mail,
+                                  user.first_name, user.email)
                 django_logger.info(f'successful user login: "{user.username}"')
                 return HttpResponseRedirect(reverse('index'))
             else:
@@ -79,6 +84,7 @@ def user_register(request):
 
                     Token.objects.get_or_create(user=user)
                     registered = True
+                    django_rq.enqueue(send_confirmation_mail, user.email)
                     django_logger.info('successful user registration!')
             except (IntegrityError, DatabaseError, Exception) as e:
                 all_errors.append(str(e))
@@ -249,3 +255,44 @@ def courses_calendar(request):
     }
 
     return render(request, 'calendar.html', context=context)
+
+
+IN_24_HOURS = 5  # 24 * 60 * 60
+FOREVER = 3  # None
+
+
+
+@login_required
+def admin_start_email_scheduler(request):
+    global email_scheduler_status
+
+    user = request.user
+    repeat = FOREVER
+    interval = IN_24_HOURS
+    queue_name = 'low'
+    result_ttl = 600
+    scheduler_name = 'default'
+
+    if request.method == 'POST' and user.is_staff:
+        scheduler = django_rq.get_scheduler(name=scheduler_name)
+        job = scheduler.schedule(     # Start  RQ-Scheduler to send warnings mails
+            datetime.utcnow(),
+            send_course_begin_mails,
+            repeat=FOREVER,
+            interval=IN_24_HOURS,
+            result_ttl=result_ttl,
+            queue_name=queue_name,
+        )
+        email_scheduler_status = str(job)
+
+
+    status = email_scheduler_status
+    context = {
+        'repeat': repeat,
+        'interval': interval,
+        'result_ttl': result_ttl,
+        'queue_name': 'low',
+        'scheduler_name': scheduler_name,
+        'status': status
+    }
+    return render(request, 'start_mail_scheduler.html', context=context)

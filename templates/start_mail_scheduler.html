@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Email Scheduler {{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>table {
+        width: 100%;
+    }</style>
+{% endblock %}
+
+{% block content_title %}<h1>Start Email Scheduler</h1>{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'main_page:start_email_scheduler' %}">Email Scheduler</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+
+    <div id="content-main">
+        <div class="module">
+
+            <table>
+                <thead>
+                <tr>
+                    <th>Scheduler Name</th>
+                    <th>Queue Name</th>
+                    <th>Result TTL</th>
+                    <th>Interval in secs</th>
+                    <th>Repeat Times</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <th>
+                    <a href="#">
+                        {{ scheduler_name }}
+                    </a>
+                </th>
+                <th>
+                    <a href="#">
+                        {{ queue_name }}
+                    </a>
+                </th>
+                <th>
+                    <a href="#">
+                        {{ result_ttl }}
+                    </a>
+                </th>
+                <th>
+                    <a href="#">
+                        {{ interval }}
+                    </a>
+                </th>
+                <th>
+                    <a href="#">
+                        {{ repeat }}
+                    </a>
+                </th>
+                <th>
+                    <a href="#">
+                        {{ status }}
+                    </a>
+                </th>
+                </tbody>
+            </table>
+
+        <form action="" method="post">
+            {% csrf_token %}
+            <div>
+                <input type="submit" value="Start Email Scheduler" />
+            </div>
+        </form>
+
+
+        </div>
+    </div>
+
+{% endblock %}

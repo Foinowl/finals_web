@@ -9,6 +9,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
+import django_rq
+from main_page.tasks import send_confirmation_mail
+
+
 from main_page.models import (
     StudentProfile,
     Course,
@@ -62,6 +66,7 @@ class UserProfileViewSet(ViewSet):
         except (IntegrityError, DatabaseError, Exception) as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            django_rq.enqueue(send_confirmation_mail, new_user.email)
             return Response(serializer.validated_data)
 
     def list(self, request):

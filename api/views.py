@@ -52,7 +52,8 @@ def check_permissions(request):
         permission_classes = ()
     return [permission() for permission in permission_classes]
 
-class UserProfileViewSet(ViewSet):
+
+class StudentProfileViewSet(ViewSet):
     authentication_classes = (TokenAuthentication,)
 
     def get_permissions(self):
@@ -61,7 +62,7 @@ class UserProfileViewSet(ViewSet):
         """
         return check_permissions(self)
 
-    queryset = StudentProfile.objects.prefetch_related('courses_registrations')
+    queryset = StudentProfile.objects.select_related('user').prefetch_related('courses_registrations')
     student_profile_serializer = StudentProfileSerializer
     user_register_serializer = RegisterUserSerializer
     user_update_serializer = UserUpdateSerializer
@@ -83,18 +84,18 @@ class UserProfileViewSet(ViewSet):
         else:
             send_registration_confirmation_mail(
                 username=new_user.username, email=new_user.email)
-            return Response({'token': str(token)})
+            return Response({'user_id': new_user.id, 'student_id': new_student_profile.id, 'token': str(token)})
 
     def list(self, request):
         serializer = self.student_profile_serializer(self.queryset, many=True)
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
-        user_ = self.queryset.filter(id=pk).first()
+        user_ = self.queryset.filter(id=int(pk)).first()
         return Response(self.student_profile_serializer(user_).data)
 
     def update(self, request, pk=None):
-        request.data.update(dict(pk=pk))
+        request.data.update(dict(pk=int(pk)))
         serializer = self.user_update_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_new_data = serializer.validated_data
@@ -113,10 +114,12 @@ class UserProfileViewSet(ViewSet):
             return Response(serializer.validated_data)
 
     def destroy(self, request, pk=None):
-        user_ = self.queryset.filter(pk=pk).first()
-        if user_:
+        student_ = self.queryset.filter(pk=int(pk)).first()
+        if student_:
+            user_ = student_.user
             user_.delete()
-            return Response(self.student_profile_serializer(user_).data)
+            student_.delete()
+            return Response({})
         else:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 

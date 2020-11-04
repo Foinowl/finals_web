@@ -3,7 +3,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from api.views import (
-    UserProfileViewSet,
+    StudentProfileViewSet,
     CourseViewSet,
     StudentCourseRegistrationViewSet,
     MonthCourseCalendarView
@@ -17,7 +17,7 @@ urlpatterns = [
     path('calendar', MonthCourseCalendarView.as_view(), name='api_calendar')
 ]
 
-router.register('users', UserProfileViewSet, basename='api_users')
+router.register('students', StudentProfileViewSet, basename='api_users')
 router.register('courses', CourseViewSet, basename='api_courses')
 router.register('registration', StudentCourseRegistrationViewSet,
                 basename='api_registration')

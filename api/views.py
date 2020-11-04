@@ -13,7 +13,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 
 import django_rq
-from main_page.tasks import send_confirmation_mail
+from main_page.tasks import send_registration_confirmation_mail
 
 
 from main_page.models import (
@@ -73,7 +73,8 @@ class UserProfileViewSet(ViewSet):
         except (IntegrityError, DatabaseError, Exception) as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            django_rq.enqueue(send_confirmation_mail, new_user.email)
+            send_registration_confirmation_mail(
+                username=new_user.username, email=new_user.email)
             return Response(serializer.validated_data)
 
     def list(self, request):

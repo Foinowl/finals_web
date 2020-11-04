@@ -14,7 +14,7 @@ from rest_framework.authtoken.models import Token
 from main_page.forms import UserForm, StudentProfileForm, MonthYearForm
 from final.settings import django_logger
 from main_page.models import Course, CourseRegistration, CourseSchedule
-from main_page.tasks import send_confirmation_mail, send_course_begin_mails
+from main_page.tasks import send_registration_confirmation_mail, send_course_begin_mails
 
 from final.settings import django_logger
 
@@ -84,7 +84,8 @@ def user_register(request):
 
                     Token.objects.get_or_create(user=user)
                     registered = True
-                    django_rq.enqueue(send_confirmation_mail, user.email)
+                    send_registration_confirmation_mail(
+                        username=user.username, email=user.email)
                     django_logger.info('successful user registration!')
             except (IntegrityError, DatabaseError, Exception) as e:
                 all_errors.append(str(e))

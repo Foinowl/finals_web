@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 import django_rq
-from django_rq import job
+from django_rq import job, enqueue
 
 from django.core.mail import send_mass_mail, send_mail
 
@@ -9,19 +9,27 @@ from main_page.models import CourseSchedule, CourseRegistration
 from final.settings import DEFAULT_FROM_EMAIL, django_logger
 
 
-@job('default')
-def send_confirmation_mail(user_mail=None):
+def send_registration_confirmation_mail(username: str = None, email: str = None):
     subject = 'Thank you for registering!'
     message = f"""
-        Dear User,
-        Thank you for registering at Learn To Fly site!\n\n
-        Sincerely,
-        Learn to Fly Team"""
+               Dear {username},\n
+               Thank you for registering at Learn To Fly site!\n\n
+               Sincerely,
+               Learn to Fly Team"""
+    enqueue(
+        send_mail_to_student,
+        user_mail=email,
+        subject=subject,
+        message=message
+    )
+
+
+@job('default')
+def send_mail_to_student(user_mail: str = None, subject: str = None, message: str = None):
     send_mail(subject, message, DEFAULT_FROM_EMAIL,
               [user_mail, ], fail_silently=True)
-    django_logger.info(f'\nconfirmation mail to {user_mail}')
+    django_logger.info(f'\nsend mail to student email address: {user_mail}')
     return True
-
 
 @job('low')
 def send_course_begin_mails():

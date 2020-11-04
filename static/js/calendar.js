@@ -41,15 +41,19 @@ function drawCalendar(coursesList) {
 
 	coursesList.forEach(function (course) {
 		let liText =
-			"Id: " +
-			course.id +
-			" starts on: " +
+			"No: " +
+			course.course_id +
+			" starts: " +
 			course.start_date +
 			" title: " +
-			course.course.title +
+			course.course__title +
 			" price: " +
-			course.course.price +
+			course.course__price +
 			"$"
+		if (course.registered) {
+			liText += " - you are registered"
+		}
+
 		let liElement = document.createElement("li")
 		let textElement = document.createTextNode(liText)
 		let aElement = document.createElement("a")

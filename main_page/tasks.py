@@ -5,9 +5,8 @@ from django_rq import job
 
 from django.core.mail import send_mass_mail, send_mail
 
-from final.settings import DEFAULT_FROM_EMAIL
 from main_page.models import CourseSchedule, CourseRegistration
-from final.settings import django_logger
+from final.settings import DEFAULT_FROM_EMAIL, django_logger
 
 
 @job('default')

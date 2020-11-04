@@ -42,8 +42,13 @@ module.exports = {
 	devServer: {
 		port: "7000",
 		host: "127.0.0.1",
+		historyApiFallback: true,
 		proxy: {
-			"/api/v1/": "http://127.0.0.1:8000",
+			"/api/v1/": {
+				target: "http://127.0.0.1:8000",
+				// pathRewrite: { "^/api/v1": "" },
+				changeOrigin: true,
+			},
 		},
 		overlay: true,
 		open: true,

@@ -4,6 +4,8 @@ let year = today.getFullYear()
 let selectYear = document.getElementById("calendarYear")
 const YEAR_RANGE = 3
 
+let apiToken = sessionStorage.getItem("apiToken")
+
 document.getElementById("calendarMonth").getElementsByTagName("option")[
 	month
 ].selected = true
@@ -23,7 +25,7 @@ $("#calendarForm").on("submit", function (event) {
 	})
 	let jsonString = JSON.stringify(values)
 
-	console.log(jsonString)
+	console.log(jsonString, apiToken)
 
 	sendPostRequest("/api/v1/calendar", jsonString)
 })

@@ -5,7 +5,6 @@ from rest_framework.authtoken.views import obtain_auth_token
 from api.views import (
     UserProfileViewSet,
     CourseViewSet,
-    StudentCourseRegistrationView,
     StudentCourseRegistrationViewSet,
     MonthCourseCalendarView
 )

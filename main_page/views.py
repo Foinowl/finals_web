@@ -24,7 +24,7 @@ email_scheduler_status = 'Stopped'
 
 def index_view(request):
     context = {'active': "home"}
-    return render(request, 'index.html', context=context)
+    return render(request, 'dj/index.html', context=context)
 
 
 @login_required
@@ -45,8 +45,8 @@ def user_login(request):
         if user:
             if user.is_active:
                 login(request, user)
-                django_rq.enqueue(send_confirmation_mail,
-                                  user.first_name, user.email)
+                # django_rq.enqueue(send_confirmation_mail,
+                #                   user.first_name, user.email)
                 django_logger.info(f'successful user login: "{user.username}"')
                 return HttpResponseRedirect(reverse('index'))
             else:
@@ -59,7 +59,7 @@ def user_login(request):
             errors_string = 'INVALID USERNAME OR PASSWORD!'
 
     context = {'active': "login", 'errors': errors_string}
-    return render(request, 'login.html', context=context)
+    return render(request, 'dj/login.html', context=context)
 
 
 def user_register(request):
@@ -104,7 +104,7 @@ def user_register(request):
         'user_form': user_form,
         'registered': registered
     }
-    return render(request, 'registration.html', context=context)
+    return render(request, 'dj/registration.html', context=context)
 
 
 def get_student_registrations(student) -> set:
@@ -167,7 +167,7 @@ def course_detail(request, pk):
         'scheduled': scheduled,
         'student_registered': student_registered,
     }
-    return render(request, 'course_detail.html', context=context)
+    return render(request, 'dj/course_detail.html', context=context)
 
 
 def get_course_registration(course_id=None, student_id=None):
@@ -255,7 +255,7 @@ def courses_calendar(request):
         "errors": errors_string,
     }
 
-    return render(request, 'calendar.html', context=context)
+    return render(request, 'dj/calendar.html', context=context)
 
 
 IN_24_HOURS = 5  # 24 * 60 * 60
@@ -296,4 +296,4 @@ def admin_start_email_scheduler(request):
         'scheduler_name': scheduler_name,
         'status': status
     }
-    return render(request, 'start_mail_scheduler.html', context=context)
+    return render(request, 'dj/start_mail_scheduler.html', context=context)

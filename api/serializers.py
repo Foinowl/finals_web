@@ -68,7 +68,7 @@ class ShortCourseRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseRegistration
-        fields = ('id', 'student',)
+        fields = '__all__'
 
 
 class CourseSerializer(serializers.ModelSerializer):

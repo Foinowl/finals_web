@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'rest_framework',
     'rest_framework.authtoken',
-    'django-rq',
+    'django_rq',
 
     'main_page.apps.MainPageConfig',
 ]
@@ -242,7 +242,8 @@ RQ_SHOW_ADMIN_LINK = True
 # If you need custom exception handlers, 'path.to.my.handler'
 RQ_EXCEPTION_HANDLERS = []
 
-import final.secret as secret
+import final.secret_settings as secret
+ 
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = getattr(secret, 'EMAIL_HOST')

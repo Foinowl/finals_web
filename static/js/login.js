@@ -2,22 +2,21 @@
     Process login form: call login API, and in case of success redirect to main page
 */
 
-function successFunction(xhttp) {
+function successAuthFunction(xhttp) {
 	let jsonString = xhttp.responseText
-	let message = "You have logged in, API token="
 	let json_data = JSON.parse(jsonString)
 
 	let apiToken = json_data.token
 	sessionStorage.setItem("apiToken", apiToken)
 
-	document.getElementById("login-result").innerHTML = message + apiToken
+	document.getElementById("login-result").innerHTML =
+		'Continue to <a href="../../templates/js/calendar.html">calendar</a>'
 	document.getElementById("login-result").className = "alert alert-success"
 
-	window.location.href = "../../templates/js/calendar.html"
+	// window.location.href = "../../templates/js/calendar.html";
 }
 
-function failFunction(xhttp) {
-
+function failAuthFunction(xhttp) {
 	document.getElementById("login-result").className = "alert alert-danger"
 	if (xhttp.status === 400) {
 		document.getElementById("login-result").innerHTML =
@@ -33,10 +32,10 @@ function sendAuthPostRequest(url, jsonString) {
 
 	xhttp.onreadystatechange = function () {
 		if (this.readyState === 4 && this.status === 200) {
-			successFunction(this)
+			successAuthFunction(this)
 		}
 		if (this.readyState === 4 && this.status !== 200) {
-			failFunction(this)
+			failAuthFunction(this)
 		}
 	}
 

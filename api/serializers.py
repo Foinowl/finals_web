@@ -10,6 +10,8 @@ from main_page.models import (
     CourseRegistration,
 )
 
+YEAR_RANGE = 3
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -134,7 +136,7 @@ class MonthYearSerializer(serializers.Serializer):
     year = serializers.IntegerField(
         required=False,
         min_value=date.today().year,
-        max_value=date.today().year + 1
+        max_value=date.today().year + YEAR_RANGE
     )
 
     def validate(self, attrs):
@@ -143,3 +145,11 @@ class MonthYearSerializer(serializers.Serializer):
         if attrs.get('year') is None:
             attrs['year'] = date.today().year
         return attrs
+
+
+class CourseScheduleSerializer(serializers.ModelSerializer):
+    course = CourseSerializer()
+
+    class Meta:
+        model = CourseSchedule
+        fields = '__all__'

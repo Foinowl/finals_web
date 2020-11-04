@@ -84,8 +84,8 @@ def user_register(request):
 
                     Token.objects.get_or_create(user=user)
                     registered = True
-                    send_registration_confirmation_mail(
-                        username=user.username, email=user.email)
+                    # send_registration_confirmation_mail(
+                    #     username=user.username, email=user.email)
                     django_logger.info('successful user registration!')
             except (IntegrityError, DatabaseError, Exception) as e:
                 all_errors.append(str(e))

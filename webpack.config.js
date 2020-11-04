@@ -2,13 +2,15 @@ const webpack = require("webpack")
 const path = require("path")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const MiniCssExtractPlugin = require("mini-css-extract-plugin")
+const { CleanWebpackPlugin } = require("clean-webpack-plugin")
 
 module.exports = {
-	mode: "development", // "production" | "development" | "none"
-	entry: "./static/js/login.js",
+	entry: {
+		main: "./static/js/login.js",
+	},
 	output: {
-		path: path.resolve(__dirname, "./static"),
-		filename: "bundle.js",
+		filename: "[name].bundle.js",
+		path: path.resolve(__dirname, "dist"),
 	},
 	module: {
 		rules: [
@@ -38,22 +40,8 @@ module.exports = {
 	resolve: {
 		extensions: [".js", ".jsx", ".less"],
 	},
-	devtool: "inline-source-map",
-	devServer: {
-		port: "7000",
-		host: "127.0.0.1",
-		historyApiFallback: true,
-		proxy: {
-			"/api/v1/": {
-				target: "http://127.0.0.1:8000",
-				// pathRewrite: { "^/api/v1": "" },
-				changeOrigin: true,
-			},
-		},
-		overlay: true,
-		open: true,
-	},
 	plugins: [
+		new CleanWebpackPlugin(),
 		new HtmlWebpackPlugin({
 			template: "./templates/js/login.html",
 		}),

@@ -1,0 +1,22 @@
+{
+	"name": "otus_final_project",
+	"version": "1.0.0",
+	"description": "## Run application ``` python manage.py runserver ``` Django server will start at localhost:8000/",
+	"main": "webpack.config.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Foinowl/finals_web.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+    "webpack": "^4.17.2"
+  },
+  "devDependencies": {
+    "webpack-cli": "^3.3.6"
+}
+}

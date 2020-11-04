@@ -1,11 +1,19 @@
+    // Process login form: call login API, and in case of success redirect to main page
+
+
+var ApiToken = '';
+
 function successFunction(xhttp) {
-	//
-	console.log("SUCCESS!!!", xhttp.status)
+	
+	let jsonString = xhttp.responseText
+	console.log("SUCCESS!!!", xhttp.status, xhttp.responseText)
+	document.getElementById("invalid-login").innerHTML = ""
 }
 
 function failFunction(xhttp) {
 	//
-	console.log("FAIL!!!", xhttp.status)
+	document.getElementById("invalid-login").innerHTML =
+		"&nbsp&nbsp&nbsp&nbsp Pair login/password is invalid!"
 }
 
 function sendPostRequest(url, jsonString) {

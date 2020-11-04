@@ -41,10 +41,12 @@ module.exports = {
 	devtool: "inline-source-map",
 	devServer: {
 		port: "7000",
-		host: "0.0.0.0",
+		host: "127.0.0.1",
 		proxy: {
-			"/api/v1/": "http://0.0.0.0:8000",
+			"/api/v1/": "http://127.0.0.1:8000",
 		},
+		overlay: true,
+		open: true,
 	},
 	plugins: [
 		new HtmlWebpackPlugin({

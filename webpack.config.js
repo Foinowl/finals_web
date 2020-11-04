@@ -1,6 +1,7 @@
 const webpack = require("webpack")
 const path = require("path")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
+const MiniCssExtractPlugin = require("mini-css-extract-plugin")
 
 module.exports = {
 	mode: "development", // "production" | "development" | "none"
@@ -17,8 +18,19 @@ module.exports = {
 				use: {
 					loader: "babel-loader",
 					options: {
-						presets: ["babel-preset-env", "es2015"],
+						presets: ["@babel/env"],
 					},
+				},
+			},
+			{
+				test: /\.css$/,
+				use: [MiniCssExtractPlugin.loader, "css-loader"],
+			},
+			{
+				test: /\.(png|jpe?g|gif)$/,
+				loader: "file-loader",
+				options: {
+					publicPath: "/final/static/images/",
 				},
 			},
 		],
@@ -28,11 +40,15 @@ module.exports = {
 	},
 	devtool: "inline-source-map",
 	devServer: {
-		port: "3001",
+		port: "7000",
 		host: "0.0.0.0",
 		proxy: {
-			"/api/v1": "http://localhost:8000",
+			"/api/v1/": "http://0.0.0.0:8000",
 		},
 	},
-	plugins: [new HtmlWebpackPlugin()],
+	plugins: [
+		new HtmlWebpackPlugin({
+			template: "./templates/js/login.html",
+		}),
+	],
 }

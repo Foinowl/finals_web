@@ -62,7 +62,8 @@ class StudentProfileViewSet(ViewSet):
         """
         return check_permissions(self)
 
-    queryset = StudentProfile.objects.select_related('user').prefetch_related('courses_registrations')
+    queryset = StudentProfile.objects.select_related(
+        'user').prefetch_related('courses_registrations')
     student_profile_serializer = StudentProfileSerializer
     user_register_serializer = RegisterUserSerializer
     user_update_serializer = UserUpdateSerializer
@@ -195,7 +196,7 @@ class StudentCourseRegistrationViewSet(ViewSet):
         return Response({'registration_id': self.registration.pk}, status=status.HTTP_200_OK)
 
     def destroy(self, request, pk=None):
-        self.validate_params_and_user(request)
+        self.registration = CourseRegistration.objects.filter(pk=pk)
         if self.registration:
             try:
                 self.registration.delete()
@@ -218,8 +219,11 @@ class MonthCourseCalendarView(APIView):
     params_serializer = MonthYearSerializer
 
     def get(self, request):
-        profile = request.user.student_profile
-        registrations = get_student_registrations(profile)
+        if hasattr(request.user, 'student_profile'):
+            profile = request.user.student_profile
+            registrations = get_student_registrations(profile)
+        else:
+            registrations = set()
 
         params_data = self.params_serializer(data=request.query_params)
         params_data.is_valid(raise_exception=True)

@@ -1,7 +1,8 @@
 import json
-
-from django.test import TestCase
-from django.test.client import Client
+from collections import namedtuple
+from datetime import date, timedelta
+# from django.test import TestCase
+# from django.test.client import Client
 from django.contrib.auth.models import User
 
 from rest_framework.test import APIClient, APITestCase
@@ -9,14 +10,15 @@ from rest_framework.test import APIClient, APITestCase
 from main_page.models import (
     Course,
     Lecture,
-    # StudentProfile,
-    # CourseRegistration,
-    # CourseSchedule,
+    CourseSchedule,
 )
 
 MAX_STUDENTS = 3
 MAX_COURSES = 2
 MAX_LECTURES = 2
+
+StudentData = namedtuple('StudentData', 'user_id student_id token')
+CourseData = namedtuple('CourseData', 'course lectures')
 
 
 class ApiTestCase(APITestCase):
@@ -25,6 +27,56 @@ class ApiTestCase(APITestCase):
     admin_api_token = None
     api_client = None
     api_token = None
+
+    def create_students(self, students_number: int) -> list:
+        students_list = []
+        for i in range(1, students_number + 1):
+            response = self.api_client.post(
+                path='/api/v1/students',
+                data=json.dumps(
+                    {
+                        "username": f"api_test_{i}",
+                        "password": f"api_test_{i}",
+                        "email": f"test_{i}@gmail.com",
+                        "first_name": f"tuti{i}",
+                        "last_name": f"fruti{i}"
+                    }
+                ),
+                content_type='application/json',
+            )
+            self.assertTrue('token' in response.data,
+                            'user-student create must return token')
+            self.assertTrue('user_id' in response.data,
+                            'user-student create must return user_id')
+            self.assertTrue('student_id' in response.data,
+                            'user-student create must return student_id')
+            student_data = StudentData(**response.data)
+            students_list.append(student_data)
+        return students_list
+
+    @staticmethod
+    def create_courses_lectures(courses_number: int, lectures_number: int) -> list:
+        courses_list = []
+        for i in range(1, courses_number+1):
+            mock_course = Course(
+                title=f'course_{i}',
+                number_of_lectures=lectures_number,
+                description=f'test{i}',
+                price=333.5
+            )
+            mock_course.save()
+            mock_course.refresh_from_db()
+            lectures_list = []
+            for j in range(1, lectures_number+1):
+                mock_lecture = Lecture(
+                    title=f'lecture_{i}_{j}', course=mock_course, number_in_course=j)
+                mock_lecture.save()
+                mock_lecture.refresh_from_db()
+                lectures_list.append(mock_lecture)
+            course_data = CourseData(
+                course=mock_course, lectures=lectures_list)
+            courses_list.append(course_data)
+        return courses_list
 
     def setUp(self):
         User.objects.create_superuser(
@@ -43,29 +95,16 @@ class ApiTestCase(APITestCase):
             ),
             content_type='application/json')
         self.admin_api_token = response.data['token']
-        self.api_client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_api_token)
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION='Token ' + self.admin_api_token)
 
     def test_student_profile_viewset(self):
         # Create 3 new user/students
-        student_id = 0
-        for i in range(1, MAX_STUDENTS+1):
-            response = self.api_client.post(
-                path='/api/v1/students',
-                data=json.dumps(
-                    {
-                        "username": f"api_test_{i}",
-                        "password": f"api_test_{i}",
-                        "email": f"test{i}@gmail.com",
-                        "first_name": f"tuti{i}",
-                        "last_name": f"fruti{i}"
-                    }
-                ),
-                content_type='application/json',
-            )
-            self.client.cookies = response.cookies
-            self.assertTrue('token' in response.data, 'user-student create must return token')
-            if i == 1:
-                student_id = response.data['student_id']
+        student_data_list = self.create_students(MAX_STUDENTS)
+        self.assertTrue(
+            len(student_data_list) == MAX_STUDENTS,
+            f'list request must return {MAX_STUDENTS} user/students'
+        )
 
         # Check: get list of 3 new users/students
         response = self.api_client.get(path='/api/v1/students')
@@ -76,7 +115,7 @@ class ApiTestCase(APITestCase):
 
         # Update 1st users/student
         response = self.api_client.put(
-            path=f'/api/v1/students/{student_id}',
+            path=f'/api/v1/students/{student_data_list[0].student_id}',
             data=json.dumps({"first_name": f"mutated"}),
             content_type='application/json',
         )
@@ -85,7 +124,8 @@ class ApiTestCase(APITestCase):
             'update request must return user/student first_name'
         )
         # Check: retrieve 1st users/student updated info
-        response = self.api_client.get(path=f'/api/v1/students/{student_id}')
+        response = self.api_client.get(
+            path=f'/api/v1/students/{student_data_list[0].student_id}')
         self.assertTrue(
             response.data['user']['first_name'] == 'mutated',
             'get request must return 1st user/student'
@@ -93,7 +133,7 @@ class ApiTestCase(APITestCase):
 
         # Destroy 1st users/student
         response = self.api_client.delete(
-            path=f'/api/v1/students/{student_id}',
+            path=f'/api/v1/students/{student_data_list[0].student_id}',
             content_type='application/json',
         )
         self.assertTrue(
@@ -101,29 +141,15 @@ class ApiTestCase(APITestCase):
             'delete request must return status 200'
         )
         # Check: retrieve 1st users/student should return empty data
-        response = self.api_client.get(path=f'/api/v1/students/{student_id}')
+        response = self.api_client.get(
+            path=f'/api/v1/students/{student_data_list[0].student_id}')
         self.assertTrue(
             response.data['user']['first_name'] == '',
             'get request must return empty data of the deleted 1st user/student'
         )
 
     def test_course_viewset(self):
-        course_id = 0
-        for i in range(1, MAX_COURSES+1):
-            mock_course = Course(
-                title=f'course_{i}',
-                number_of_lectures=MAX_LECTURES,
-                description=f'test{i}',
-                price=333.5
-            )
-            mock_course.save()
-            mock_course.refresh_from_db()
-            if i == 1:
-                course_id = mock_course.id
-            for j in range(1, MAX_LECTURES+1):
-                mock_lecture = Lecture(title=f'lecture_{i}_{j}', course=mock_course, number_in_course=j)
-                mock_lecture.save()
-                mock_course.refresh_from_db()
+        courses_list = self.create_courses_lectures(MAX_COURSES, MAX_LECTURES)
 
         # Get list of all courses with lectures
         response = self.api_client.get(path='/api/v1/courses')
@@ -138,7 +164,8 @@ class ApiTestCase(APITestCase):
         )
 
         # Get detailed of all courses with lectures
-        response = self.api_client.get(path=f'/api/v1/courses/{course_id}')
+        response = self.api_client.get(
+            path=f'/api/v1/courses/{courses_list[0].course.id}')
         self.assertTrue(
             response.status_code == 200,
             'get course by id should not return error'
@@ -149,7 +176,97 @@ class ApiTestCase(APITestCase):
         )
 
     def test_student_course_registration_viewset(self):
-        self.assertEqual(1, 1, 'reason 3')
+        student = self.create_students(1)[0]
+        course = self.create_courses_lectures(1, 1)[0].course
+        # Create course registration
+        response = self.api_client.post(
+            path=f'/api/v1/registration?student={student.student_id}&course={course.id}'
+        )
+        # Check the result
+        self.assertTrue(
+            'registration_id' in response.data,
+            f'create registration must return registration_id'
+        )
+        # Retrieve registration
+        registration_id = response.data['registration_id']
+        response = self.api_client.get(
+            path=f'/api/v1/registration/{registration_id}'
+        )
+        # Check the result
+        self.assertTrue(
+            response.status_code == 200,
+            f'retrieve registration must return status == 200'
+        )
+        # List registrations
+        response = self.api_client.get(
+            path=f'/api/v1/registration'
+        )
+        # Check the result
+        self.assertTrue(
+            len(response.data) == 1,
+            'list registration must return status list of length == 1'
+        )
+        # Destroy registration
+        response = self.api_client.delete(
+            path=f'/api/v1/registration/{registration_id}'
+        )
+        # Check the result
+        self.assertTrue(
+            response.status_code == 200,
+            'delete registration must return status == 200'
+        )
+        response = self.api_client.get(
+            path=f'/api/v1/registration/{registration_id}'
+        )
+        self.assertTrue(
+            not response.data['student'] and not response.data['course']['title'],
+            'retrieve deleted registration must return empty data'
+        )
 
     def test_month_calendar_view(self):
-        self.assertEqual(1, 1, 'reason 4')
+        _, student_id, student_token = self.create_students(1)[0]
+        course = self.create_courses_lectures(1, 1)[0].course
+        today = date.today()
+        schedule = CourseSchedule(course=course, start_date=today)
+        schedule.save()
+        schedule.refresh_from_db()
+
+        # Retrieve current month schedules
+        response = self.api_client.get(
+            path=f'/api/v1/calendar'
+        )
+        # Check the result
+        self.assertTrue(
+            response.status_code == 200,
+            'calendar must return status == 200'
+        )
+        self.assertTrue(
+            len(response.data) == 1,
+            'calendar in the current month has only 1 schedule'
+        )
+
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION='Token ' + student_token)
+        # Create student registration
+        response = self.api_client.post(
+            path=f'/api/v1/registration?student={student_id}&course={course.id}'
+        )
+        # Check the result
+        self.assertTrue(
+            'registration_id' in response.data,
+            f'create registration must return registration_id'
+        )
+
+        month = today.month
+        year = today.year
+        response = self.api_client.get(
+            path=f'/api/v1/calendar?month={month}&year={year}'
+        )
+        self.assertTrue(
+            len(response.data) == 1,
+            'calendar in the current month has only 1 schedule'
+        )
+        self.assertTrue(
+            response.data[0]['registered'],
+            'calendar must return registered true for the current student and schedule'
+        )
